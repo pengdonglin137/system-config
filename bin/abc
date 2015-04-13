@@ -825,9 +825,9 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 cd $x.git
                 remote=abc-$(echo $x|md5sum|cut -b 1-3)
                 git remote add $remote smartisan:$x || true
-                git fetch -n $remote
+                git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/*
             ) || true
-        done
+        done | tee ~/.logs/cron-git-fetch-$(today).log
     ) || true
 
     ## start code-generator "^\\s *#\\s *"
