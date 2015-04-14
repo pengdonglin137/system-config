@@ -581,9 +581,15 @@ EOF
             )
 
             if test "$(stat -c %s /tmp/abc-patch.$$)" = 0; then
+                echo should touch everything for rebuild
                 rm /tmp/abc-patch.$$
                 find . -type f -print0 |xargs -0 touch
             else
+                echo will now apply a patch.
+                if echo $SHELLOPTS | grep -q xtrace; then
+                    echo debugging, should touch everything for rebuild
+                    find . -type f -print0 |xargs -0 touch
+                fi
                 (
                     cat /tmp/abc-patch.$$; rm -f /tmp/abc-patch.$$
                 ) | git apply
