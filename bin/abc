@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -14,12 +14,12 @@ fi
 
 export USE_CCACHE=1
 
-if test -e ~/src/github/projects/ABC.org -a ~/src/github/projects/ABC.org -nt ~/bin/abc; then
+if test -e ~/src/github/projects/ABC.org -a ~/src/github/projects/ABC.org -nt ~/system-config/bin/abc; then
     emacsclient -e '
         (progn
          (save-some-buffers t)
          (find-file "~/src/github/projects/ABC.org")
-         (org-babel-tangle))' 1>&2 && touch ~/bin/abc && exec $0 "$@"
+         (org-babel-tangle))' 1>&2 && touch ~/system-config/bin/abc && exec $0 "$@"
 fi
 
 die() {
