@@ -28,7 +28,7 @@ die() {
         echo
     ) |
         (
-            flock ~/.logs/abc.err.lock tee -a ~/.logs/abc.err.txt
+            flock ~/.cache/system-config/logs/abc.err.lock tee -a ~/.cache/system-config/logs/abc.err.txt
         )
     exit -1
 }
@@ -53,11 +53,11 @@ info() {
         echo $(date): "$@"
     fi |
         (
-            flock ~/.logs/abc.info.lock tee -a ~/.logs/abc.info.txt ~/.logs/abc.info.txt.$$ >/dev/null 2>&1
+            flock ~/.cache/system-config/logs/abc.info.lock tee -a ~/.cache/system-config/logs/abc.info.txt ~/.cache/system-config/logs/abc.info.txt.$$ >/dev/null 2>&1
             (
-                rm -f ~/.logs/abc.info.txt.$$
+                rm -f ~/.cache/system-config/logs/abc.info.txt.$$
                 cat
-            ) < ~/.logs/abc.info.txt.$$
+            ) < ~/.cache/system-config/logs/abc.info.txt.$$
         ) 1>&2
 }
 function killlock() { # can kill run-away abc tasks.
@@ -806,7 +806,7 @@ abc-notify-maintainer() {
 }
 
 function cron-daily-build() { # do a daily build using cron. do not submit this task!
-    . ~/.config/ssh-agent
+    . ~/.config/system-config/ssh-agent
 
     (
         local x
@@ -833,7 +833,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 git remote add $remote smartisan:$x || true
                 git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/*
             ) || true
-        done | tee ~/.logs/cron-git-fetch-$(today).log
+        done | tee ~/.cache/system-config/logs/cron-git-fetch-$(today).log
     ) || true
 
     ## start code-generator "^\\s *#\\s *"
@@ -1087,7 +1087,7 @@ function create-slave() { # create a slave on another build, requires
     fi
 
     cd ~
-    . ~/.config/ssh-agent
+    . ~/.config/system-config/ssh-agent
     command psync $slave system-config
     command psync $slave external
     command psync $slave cpan
@@ -1116,7 +1116,7 @@ you can find a branch with git branch -a | grep non-build"
     cd kernel
     clear_all_old_patches
     mark_a_patch $(ap)
-    . ~/.bash-path
+    . ~/.config/system-config/.bashrc-path
     bash -x rm-non-build-files-kernel
     git add .
     git commit -s -m 'with non build files removed'
