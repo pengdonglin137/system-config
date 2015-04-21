@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -805,6 +805,34 @@ abc-notify-maintainer() {
     return 1
 }
 
+function mirror-manifests() {
+    set -e
+
+    if ! (
+            mkdir -p ~/src/mirror-manifests
+            cd ~/src/mirror-manifests
+            if test ! -d manifests/.git; then
+                git clone smartisan:/qualcomm/platform/manifest.git manifests.$$ -b sanfrancisco
+                mv manifests.$$ manifests
+                cd manifests
+                gerrit-fix-hooks
+            else
+                cd manifests
+                git pull -f
+            fi
+
+            for x in *.xml; do
+                perl -npe 's,ssh://172.16.0.9:29418,smartisan-gerrit:,' $x > git-code/$x;
+            done
+            git add .
+            git commit -m 'Updated manifests for jenkins'
+            gerrit-push-review -R
+            gerrit-do-review
+        ); then
+        abc-notify-maintainer -s "mirror manifests failed"
+    fi
+}
+
 function cron-daily-build() { # do a daily build using cron. do not submit this task!
     . ~/.config/system-config/ssh-agent
 
@@ -830,7 +858,8 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
             (
                 cd $x.git
                 remote=abc-$(echo $x|md5sum|cut -b 1-3)
-                git remote add $remote smartisan:$x || true
+                git remote add $remote smartisan-gerrit:$x ||
+                    git config remote.$remote.url smartisan-gerrit:$x || true
                 git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/*
             ) || true
         done | tee ~/.cache/system-config/logs/cron-git-fetch-$(today).log
