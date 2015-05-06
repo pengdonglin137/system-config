@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -370,21 +370,23 @@ function repo-cherry-find-all() { # find all patches that needs
                                   # cherry-picking between 2 branches.
 
     ## start code-generator "^\\s *#\\s *"
-    # generate-getopts -l b:base f:from t:to ssync
+    # generate-getopts -l b:base f:from t:to ssync F:from_xml
     ## end code-generator
     ## start generated code
     local base=
     local from=
     local to=
     local sync=false
+    local from_xml=
     local OPTIND=1
-    while getopts 'b:f:t:s' opt; do
+    while getopts 'b:f:t:sF:' opt; do
         case "$opt" in
             b)    base=$OPTARG;;
             f)    from=$OPTARG;;
             t)    to=$OPTARG;;
             s)    sync=true;;
-            *)    echo Usage Error;;
+            F)    from_xml=$OPTARG;;
+            *)    echo Usage Error; exit 2;;
         esac
     done
     shift $(($OPTIND - 1))
@@ -393,6 +395,10 @@ function repo-cherry-find-all() { # find all patches that needs
 
     if test ! -d ~/buildfarm/"$base"/bionic/.git; then
         die "Invalid base build: $base"
+    fi
+
+    if test "$from_xml" -a "$from" -o "$to"; then
+        die "should not specify $from_xml and $from/$to together"
     fi
 
     local base_build=~/buildfarm/"$base"
@@ -409,7 +415,12 @@ function repo-cherry-find-all() { # find all patches that needs
         cd ~/buildfarm/"$base"
         mkdir -p out/diff
         lock-file out/diff/repo-cherry-find-all.lock "will now lock for repo-cherry-find-all"
-        command repo-cherry-find-all -f $from -t $to
+        if test "$from_xml"; then
+            from_xml=$(basename $from_xml)
+            command repo-cherry-find-all --xf $from_xml
+        else
+            command repo-cherry-find-all -f $from -t $to
+        fi
         base_build=~/buildfarm/"$base"
         copy-output-files -t repo-cherry-find-all out/diff
     )
