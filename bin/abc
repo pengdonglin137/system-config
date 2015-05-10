@@ -921,6 +921,10 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
         (
             cd "$d"
             lock-base-build "Will do cron daily build now"
+            if test -e ".repo/do-not-build"; then
+                info admin has set this as non-build, quit
+                exit 0
+            fi
 
             if ! is-tty-io; then
                 repo sync -j8 -d --no-tags || (
