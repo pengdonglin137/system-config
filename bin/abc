@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -854,6 +854,11 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 exit # don't if we are testing with a base build.
             fi
         done
+        (
+            cd ~/buildfarm/.repo-zygote
+            cd .repo/manifests
+            git pull
+        ) || true
         cd /data/mirror
         if test ! -e .owned-by-abc; then
             exit
@@ -871,7 +876,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 remote=abc-$(echo $x|md5sum|cut -b 1-3)
                 git remote add $remote smartisan-gerrit:$x ||
                     git config remote.$remote.url smartisan-gerrit:$x || true
-                git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/*
+                git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/heads/* refs/meta/*:refs/remotes/$remote/meta/*
             ) || true
         done | tee ~/.cache/system-config/logs/cron-git-fetch-$(today).log
     ) || true
@@ -917,7 +922,8 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
         (
             cd "$d"/.repo/manifests
             git reset --hard
-        )
+            git clean -xfd
+        ) || continue
         (
             cd "$d"
             lock-base-build "Will do cron daily build now"
@@ -969,7 +975,13 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 config=${config#.repo/out-}
                 (
                     info will build $config at $base_build
-                    android-make -c $config
+                    if test -d "bionic"; then
+                        android-make -c $config
+                    else
+                        info not an android repo, maybe oem?
+                        exit 0
+                    fi
+
                     ret=$?
                     if test $ret = 0; then
                         info new build is ok, will update the build manifest.
@@ -1003,7 +1015,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                     wait
                 fi
             ) 9>/dev/null
-        )
+        ) || continue
     done
 }
 
