@@ -8,6 +8,10 @@
 # All bash scripts should start with ~set -e~ to fail early and loudly.
 set -e
 
+if test "$SYSTEM_CONFIG_INITED" != true; then
+    . ~/system-config/.bashrc
+fi
+
 if test "$ABC_REMOTE_HOST" = ""; then
     export ABC_REMOTE_HOST=abc
 fi
