@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -998,6 +998,16 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                             info need to try old build
                             cat .repo/manifest.xml.base > .repo/manifest.xml
                             repo sync -j8 -d --no-tags
+                            android-make -c $config
+                            ret=$?
+                            if test $ret = 0; then
+                                copy-compile-output-files
+                            fi
+                            exit $ret
+                        ) || (
+                            info need to try clean old build
+                            repo sync -j8 -d --no-tags
+                            rm .repo/out-$config -rf
                             android-make -c $config
                             ret=$?
                             if test $ret = 0; then
