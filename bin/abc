@@ -841,8 +841,7 @@ function mirror-manifests() {
             done
             git add .
             git commit -m 'Updated manifests for jenkins'
-            gerrit-push-review -R
-            gerrit-do-review
+            git push $(repo-remote)
         ); then
         abc-notify-maintainer -s "mirror manifests failed"
     fi
@@ -997,6 +996,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                         (
                             info need to try old build
                             cat .repo/manifest.xml.base > .repo/manifest.xml
+                            my-rfa 'git clean -xfd; git reset --hard'
                             repo sync -j8 -d --no-tags
                             android-make -c $config
                             ret=$?
