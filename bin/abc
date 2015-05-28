@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:/bhj/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -820,6 +820,21 @@ abc-notify-maintainer() {
     return 1
 }
 
+function detect-base-build-names() {
+    cd ~/buildfarm/
+    for x in */; do
+        if test -d $x/.repo; then
+            y=$(basename $(readlink -f $x/.repo/manifest.xml))
+            y=${y%.xml}
+            if test ${x%/} != "$y"; then
+                echo $x should be $y
+            fi
+        else
+            echo $x not a base build
+        fi
+    done
+}
+
 function mirror-manifests() {
     set -e
 
@@ -838,6 +853,9 @@ function mirror-manifests() {
 
             for x in *.xml; do
                 perl -npe 's,ssh://172.16.0.9:29418,smartisan-gerrit:,' $x > git-code/$x;
+                if grep smartisan-gerrit $x; then
+                    perl -npe 's,smartisan-gerrit:,smartisan:,' -i $x
+                fi
             done
             git add .
             git commit -m 'Updated manifests for jenkins'
@@ -977,6 +995,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 (
                     info will build $config at $base_build
                     if test -d "bionic"; then
+                        my-rfa 'git clean -xfd; git reset --hard'
                         android-make -c $config
                     else
                         info not an android repo, maybe oem?
