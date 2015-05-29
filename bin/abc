@@ -954,11 +954,9 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
             fi
 
             if ! is-tty-io; then
-                repo sync -j8 -d --no-tags || (
-                    info "repo sync failed with $?"
-                    my-rfa "git reset --hard; git clean -xfd" &&
-                        repo sync -j8 -d --no-tags
-                ) || abc-notify-maintainer -s "repo sync failed for $PWD: $?" || continue
+                my-rfa "git reset --hard; git clean -xfd" || true
+                repo sync -j8 -d --no-tags ||
+                    abc-notify-maintainer -s "repo sync failed for $PWD: $?" || continue
 
                 repo manifest -r -o .repo/manifest.xml.sync
                 cat .repo/manifest.xml.sync > .repo/manifest.xml
@@ -995,45 +993,49 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 (
                     info will build $config at $base_build
                     if test -d "bionic"; then
-                        my-rfa 'git clean -xfd; git reset --hard'
-                        android-make -c $config
+                        if test -e .repo/out-$config/manifest.xml.base && diff -q .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base; then
+                            echo no need to rebuild $config in $base_build
+                            exit 0
+                        fi
+                        if android-make -c $config; then
+                            info "$config build ok 1st time in $base_build"
+                            cp .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base
+                            info new build is ok, will update the build manifest.
+                            cp .repo/manifest.xml.sync .repo/manifest.xml.base
+                            cat .repo/manifest.xml.base > .repo/manifest.xml
+                            copy-compile-output-files
+                        else
+                            exit 1
+                        fi
                     else
                         info not an android repo, maybe oem?
                         exit 0
                     fi
 
-                    ret=$?
-                    if test $ret = 0; then
-                        info new build is ok, will update the build manifest.
-                        cp .repo/manifest.xml.sync .repo/manifest.xml.base
-                        cat .repo/manifest.xml.base > .repo/manifest.xml
-                        copy-compile-output-files
-                    fi
-                    exit $ret
                 ) || (
-                    if test -e .repo/manifest.xml.base && ! diff -q .repo/manifest.xml .repo/manifest.xml.base; then
+                    if test -e .repo/out-$config/manifest.xml.base && ! diff -q .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base; then
                         (
-                            info need to try old build
-                            cat .repo/manifest.xml.base > .repo/manifest.xml
+                            info need to try old build for $config in $base_build
+                            cat .repo/out-$config/manifest.xml.base > .repo/manifest.xml
                             my-rfa 'git clean -xfd; git reset --hard'
                             repo sync -j8 -d --no-tags
-                            android-make -c $config
-                            ret=$?
-                            if test $ret = 0; then
+                            if android-make -c $config; then
                                 copy-compile-output-files
+                            else
+                                exit 1
                             fi
-                            exit $ret
                         ) || (
                             info need to try clean old build
                             repo sync -j8 -d --no-tags
                             rm .repo/out-$config -rf
-                            android-make -c $config
-                            ret=$?
-                            if test $ret = 0; then
+                            if android-make -c $config; then
                                 copy-compile-output-files
+                                repo manifest -r -o .repo/out-$config/manifest.xml.base.$$
+                                mv .repo/out-$config/manifest.xml.base.$$ .repo/out-$config/manifest.xml.base
+                            else
+                                exit 1
                             fi
-                            exit $ret
-                        ) || abc-notify-maintainer -s "Full build failed again for $PWD: $config" -a buildspec.mk
+                        ) || abc-notify-maintainer -s "Full build failed again, with the base manifest\! for $PWD: $config" -a buildspec.mk
                     else
                         abc-notify-maintainer -s "Full build failed and no old base xml found for $PWD: $config" -a buildspec.mk
                     fi
