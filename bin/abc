@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:/bhj/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -1238,21 +1238,23 @@ function remote-abc() { # run a remote abc command, such as abc-files
 if test "$(readlink -f "$BASH_SOURCE")" = "$(readlink -f "$(echo "$0" | grep / || which "$0" 2>/dev/null)" )"; then
 
     ## start code-generator "^\\s *#\\s *"
-    # generate-getopts xdebug ttestabc ddryrun XDEBUG
+    # generate-getopts xdebug ttestabc ddryrun XDEBUG h:abc_host
     ## end code-generator
     ## start generated code
     debug=false
     testabc=false
     dryrun=false
     DEBUG=false
+    abc_host=
     OPTIND=1
-    while getopts 'xtdX' opt; do
+    while getopts 'xtdXh:' opt; do
         case "$opt" in
             x)    debug=true;;
             t)    testabc=true;;
             d)    dryrun=true;;
             X)    DEBUG=true;;
-            *)    echo Usage Error;;
+            h)    abc_host=$OPTARG;;
+            *)    echo Usage Error; exit 2;;
         esac
     done
     shift $(($OPTIND - 1))
@@ -1274,6 +1276,10 @@ if test "$(readlink -f "$BASH_SOURCE")" = "$(readlink -f "$(echo "$0" | grep / |
 
     if test $testabc = true; then
         export ABC_REMOTE_HOST=code3
+    fi
+
+    if test "$abc_host"; then
+        ABC_REMOTE_HOST=$abc_host
     fi
 
     if grep -q -P "^\s*function $1\s*\(" "$0" || test "$(basename $0)" = $1; then
