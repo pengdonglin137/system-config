@@ -348,7 +348,13 @@ copy-output-files() {
     target=~/buildfarm/.abc-output/$(basename $base_build)/$target
 
     mkdir -p $target
-    rsync "$@" $target/ -av --delete
+    for x in "$@"; do
+        if test ! -e "$x"; then
+            info "$x" not exist
+            continue
+        fi
+        rsync "$x" $target/ -av --delete
+    done
 
     (
 
@@ -458,6 +464,7 @@ copy-compile-output-files() {
                       out/target/product/*/system* \
                       out/target/product/*/boot* \
                       out/target/product/*/root \
+                      out/target/product/*/obj/KERNEL_OBJ/vmlinux \
                       out/target/product/*/emmc_appsboot.mbn \
                       $extra |
         grep -v '/$'
