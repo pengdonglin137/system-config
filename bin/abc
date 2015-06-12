@@ -212,11 +212,11 @@ psync() {
 ssh() {
 
     (
-        if test "$1" = code3; then
-            shift
-            set -- abc@172.16.2.25 "$@"
-        fi
         if test $dryrun = true; then
+            if test "$1" = code3; then
+                shift
+                set -- abc@172.16.2.25 "$@" # only show
+            fi
             echo ssh "$@" | tee /dev/stderr | putclip
         fi
     )
@@ -1120,27 +1120,22 @@ function abc-beagrep() {
 }
 
 function abc-files() { # use beagrep to find matching files, for e.g.,
-                       # abc-files "readlink" will list all files that
-                       # contains readlink.
+    # abc-files "readlink" will list all files that
+    # contains readlink.
+
+    ## start code-generator "^\\s *#\\s *"
+    # generate-getopts -l b:base
+    ## end code-generator
     ## start generated code
-    TEMP=$(getopt -o b: --long "base:"  -n $(basename $0) -- "$@")
     local base=
-    eval set -- "$TEMP"
-    while true; do
-        case "$1" in
-            -b|--base)
-                base=$2
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                die "internal error"
-                ;;
+    local OPTIND=1
+    while getopts 'b:' opt; do
+        case "$opt" in
+            b)    base=$OPTARG;;
+            *)    echo Usage Error; exit 2;;
         esac
     done
+    shift $(($OPTIND - 1))
 
     ## end generated code
 
@@ -1153,7 +1148,17 @@ function abc-files() { # use beagrep to find matching files, for e.g.,
     fi
 
     cd -P ~/buildfarm/"$base"
-    beagrep-files "$@" | cut -b $((${#PWD} + 2))-
+    beagrep-files "$@" | (
+        read l1
+        local n=2
+        if [[ $l1 =~ ^/Share/ ]] && [[ $PWD =~ ^/home/ ]]; then
+            n=3
+        fi
+        (
+            echo "$l1"
+            cat
+        ) | cut -b $((${#PWD} + n))-
+    )
 }
 
 
@@ -1183,7 +1188,8 @@ function create-slave() { # create a slave on another build, requires
     fi
 
     cd ~
-    . ~/.config/system-config/ssh-agent
+    # . ~/.config/system-config/ssh-agent
+    unset SSH_AUTH_SOCK
     command psync $slave system-config
     command psync $slave external
     command psync $slave cpan
@@ -1194,7 +1200,7 @@ function create-slave() { # create a slave on another build, requires
         command psync $slave weibo.emacs
     )
 
-    rsync .ssh $slave: -av --exclude .ssh/known_hosts --exclude=.ssh/.git --delete
+    # rsync .ssh $slave: -av --exclude .ssh/known_hosts --exclude=.ssh/.git --delete
     echo slave created.
 }
 
@@ -1295,7 +1301,7 @@ if test "$(readlink -f "$BASH_SOURCE")" = "$(readlink -f "$(echo "$0" | grep / |
         abc_command=("$command" "$@")
         "$command" "$@"
      else
-         die "$1: abc command not found"
+         die "$1: is not an abc command"
     fi
 fi
 
