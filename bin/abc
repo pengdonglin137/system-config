@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -842,6 +842,23 @@ function detect-base-build-names() {
     done
 }
 
+function sync-qc-oems() {
+    if test $# != 1; then
+        die "Error: Usage $(basename $0) qc-oem-repo-name, for e.g., $(basename $0) msm8992-la-1-0_amss_device"
+    fi
+
+    if test -d /data/mirror/"$1".git; then
+       ~/tmp/sync-qc-oems "$1"
+       (
+           cd /data/mirror/"$1".git
+           for x in $(git branch -a | grep '^\s*qualcomm/' -P); do
+               echo git log for branch "$x":
+               git log $x
+           done
+       )
+    fi
+}
+
 function mirror-manifests() {
     set -e
 
@@ -1004,7 +1021,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                             echo no need to rebuild $config in $base_build
                             exit 0
                         fi
-                        if android-make -c $config; then
+                        if android-make -c $config || (info "$config need do clean build"; rm -rf .repo/out-$config/*/||true; android-make -c $config); then
                             info "$config build ok 1st time in $base_build"
                             cp .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base
                             info new build is ok, will update the build manifest.
@@ -1148,17 +1165,8 @@ function abc-files() { # use beagrep to find matching files, for e.g.,
     fi
 
     cd -P ~/buildfarm/"$base"
-    beagrep-files "$@" | (
-        read l1
-        local n=2
-        if [[ $l1 =~ ^/Share/ ]] && [[ $PWD =~ ^/home/ ]]; then
-            n=3
-        fi
-        (
-            echo "$l1"
-            cat
-        ) | cut -b $((${#PWD} + n))-
-    )
+
+    beagrep-files "$@" | cut -b $((${#PWD} + 2))-
 }
 
 
