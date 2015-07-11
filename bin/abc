@@ -890,7 +890,7 @@ function mirror-manifests() {
 }
 
 function cron-daily-build() { # do a daily build using cron. do not submit this task!
-    . ~/.config/system-config/ssh-agent
+    . ~/system-config/bin/set-ssh-agent
 
     (
         local x
@@ -1196,7 +1196,7 @@ function create-slave() { # create a slave on another build, requires
     fi
 
     cd ~
-    # . ~/.config/system-config/ssh-agent
+    # . ~/system-config/bin/set-ssh-agent
     unset SSH_AUTH_SOCK
     command psync $slave system-config
     command psync $slave external
