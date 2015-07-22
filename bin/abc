@@ -366,11 +366,25 @@ copy-output-files() {
         export ABC_USER_OUTPUT=../by-user/$ABC_USER/$(basename $target)
         find . -type d | perl -ne 'use File::Path qw(make_path); chomp; make_path("$ENV{ABC_USER_OUTPUT}/$_")'
         find . -type f | perl -ne 'chomp; link $_, "$ENV{ABC_USER_OUTPUT}/$_"'
-        rsync . $ABC_USER_OUTPUT -av --delete
+
+        files=$(
+            rsync . $ABC_USER_OUTPUT -av --delete 2>&1 |
+                tee /dev/stderr |
+                while read file; do
+                    if test -e "$file"; then
+                        echo $file
+                    fi
+                done
+             )
+
         smb_folder=$(readlink -f $ABC_USER_OUTPUT | perl -npe 's,^/Share,smb://172.16.2.25,')
         echo "Please get your files at: $smb_folder"
         if [[ "$ABC_USER" =~ baohaojun@.* ]]; then
-            echo 'yes-or-no-p -y Continue && for x in $(getclip); do (set -x; adb-push '$smb_folder'/$x); done'
+            cat <<EOF
+cat <<XXX | while read x; do (set -x; adb-push $smb_folder/\$x); done
+$files
+XXX
+EOF
         fi
     )
 
