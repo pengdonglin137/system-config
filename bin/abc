@@ -378,6 +378,9 @@ copy-output-files() {
              )
 
         smb_folder=$(readlink -f $ABC_USER_OUTPUT | perl -npe 's,^/Share,smb://172.16.2.25,')
+        if test "$LOCALIP" && test "$LOCALIP" != 172.16.2.25; then
+            smb_folder=$(echo $smb_folder|perl -npe 's,smb://172.16.2.25/abc/,smb://172.16.2.25/abc/$ENV{LOCALIP}/,')
+        fi
         echo "Please get your files at: $smb_folder"
         if [[ "$ABC_USER" =~ baohaojun@.* ]]; then
             cat <<EOF
@@ -1139,9 +1142,9 @@ function abc-beagrep() {
         esac
     done
     shift $(($OPTIND - 1))
-    
+
     ## end generated code
-    
+
     base_build=$(readlink -f ~/buildfarm/"$base_build")
     if test ! -d "$base_build" || ! is-a-subdir "$base_build" ~/buildfarm/; then
         die "Invalid repo dir: $repo_path"
