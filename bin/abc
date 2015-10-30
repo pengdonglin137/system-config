@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -883,6 +883,10 @@ function sync-simt-repos() {
     HOME=/home/bhj
     USER=bhj
 
+    exec 9< ~/tmp/sync-simt-repos
+    if ! flock -n 9; then
+        die "Can't lock the sync script, others might be syncing?"
+    fi
     ~/tmp/sync-simt-repos "$@"
 }
 
@@ -1152,9 +1156,9 @@ function abc-beagrep() {
         esac
     done
     shift $(($OPTIND - 1))
-
+    
     ## end generated code
-
+    
     base_build=$(readlink -f ~/buildfarm/"$base_build")
     if test ! -d "$base_build" || ! is-a-subdir "$base_build" ~/buildfarm/; then
         die "Invalid repo dir: $repo_path"
