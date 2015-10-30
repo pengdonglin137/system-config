@@ -876,6 +876,16 @@ function sync-qc-oems() {
     fi
 }
 
+function sync-simt-repos() {
+    if test $# != 2; then
+        die "Error: Usage $(basename $0) u1/u2 branch_name"
+    fi
+    HOME=/home/bhj
+    USER=bhj
+
+    ~/tmp/sync-simt-repos "$@"
+}
+
 function mirror-manifests() {
     set -e
 
