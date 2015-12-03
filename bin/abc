@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/src/github/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -840,7 +840,7 @@ function repo-revision() {
 
 abc-notify-maintainer() {
     info Will now send email to maintainer: "$@"
-    /usr/bin/mailx -r baohaojun@gmail.com "$@" baohaojun@smartisan.com   < /dev/null
+    /usr/bin/mailx -S from=smartisancm@smartisan.com  -S smtp=localhost:25 "$@" baohaojun@smartisan.com < /dev/null
     return 1
 }
 
