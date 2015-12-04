@@ -1142,30 +1142,40 @@ EOF
     ssh -i ~/.ssh/id_rsa_cmtest cmtest@code -p 29418 gerrit review "$review_patch" --verified $verified -m \'"${message//\'/\'\\\'\'}"\'
 }
 
-function abc-beagrep() {
+
+function abc-tags() { # use beagrep to find matching files, for e.g.,
+    # abc-tags "readlink" will list all files that
+    # defines readlink.
+
     ## start code-generator "^\\s *#\\s *"
-    # generate-getopts -l b:base_build
+    # generate-getopts -l b:base
     ## end code-generator
     ## start generated code
-    local base_build=
+    local base=
     local OPTIND=1
     while getopts 'b:' opt; do
         case "$opt" in
-            b)    base_build=$OPTARG;;
+            b)    base=$OPTARG;;
             *)    echo Usage Error; exit 2;;
         esac
     done
     shift $(($OPTIND - 1))
-    
+
     ## end generated code
-    
-    base_build=$(readlink -f ~/buildfarm/"$base_build")
-    if test ! -d "$base_build" || ! is-a-subdir "$base_build" ~/buildfarm/; then
-        die "Invalid repo dir: $repo_path"
+
+    if test ! "$base"; then
+        base=sfo-rom
     fi
-    cd "$base_build"
-    beagrep "$@"
+
+    if test ! -d ~/buildfarm/"$base"; then
+        die "no such base build: $base"
+    fi
+
+    cd -P ~/buildfarm/"$base"
+
+    grep-beatags -e "$@"
 }
+
 
 function abc-files() { # use beagrep to find matching files, for e.g.,
     # abc-files "readlink" will list all files that
@@ -1198,6 +1208,31 @@ function abc-files() { # use beagrep to find matching files, for e.g.,
     cd -P ~/buildfarm/"$base"
 
     beagrep-files "$@" | cut -b $((${#PWD} + 2))-
+}
+
+function abc-beagrep() {
+    ## start code-generator "^\\s *#\\s *"
+    # generate-getopts -l b:base_build
+    ## end code-generator
+    ## start generated code
+    local base_build=
+    local OPTIND=1
+    while getopts 'b:' opt; do
+        case "$opt" in
+            b)    base_build=$OPTARG;;
+            *)    echo Usage Error; exit 2;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+    
+    ## end generated code
+    
+    base_build=$(readlink -f ~/buildfarm/"$base_build")
+    if test ! -d "$base_build" || ! is-a-subdir "$base_build" ~/buildfarm/; then
+        die "Invalid repo dir: $repo_path"
+    fi
+    cd "$base_build"
+    beagrep "$@"
 }
 
 
