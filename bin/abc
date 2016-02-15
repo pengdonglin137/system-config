@@ -829,7 +829,7 @@ function repo-revision() {
         cd "$base_build"
         if test -d "$repo_path" && is-a-subdir "$base_build"/"$repo_path" "$base_build"; then
             cd "$base_build"/"$repo_path"
-            repo forall . -c 'echo $REPO_LREV'
+            repo forall $(repo-project) -c 'echo $REPO_LREV'
         else
             die "Invalid repo dir: $repo_path"
         fi
