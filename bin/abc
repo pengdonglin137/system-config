@@ -829,7 +829,7 @@ function repo-revision() {
         cd "$base_build"
         if test -d "$repo_path" && is-a-subdir "$base_build"/"$repo_path" "$base_build"; then
             cd "$base_build"/"$repo_path"
-            repo forall $(repo-project) -c 'echo $REPO_LREV'
+            repo forall . -c 'echo $REPO_LREV'
         else
             die "Invalid repo dir: $repo_path"
         fi
@@ -864,15 +864,31 @@ function sync-qc-oems() {
         die "Error: Usage $(basename $0) qc-oem-repo-name, for e.g., $(basename $0) msm8992-la-1-0_amss_device"
     fi
 
-    if test -d /data/mirror/"$1".git; then
-       ~/tmp/sync-qc-oems "$1"
-       (
-           cd /data/mirror/"$1".git
-           for x in $(git branch -a | grep '^\s*qualcomm/' -P); do
-               echo git log for branch "$x":
-               git log $x
-           done
-       )
+    if test ! -e ~/src/product-config/sync-qc-oems/"$1"; then
+        if test ! -d ~/src/product-config/.git; then
+            git clone s:product-config ~/src/product-config
+        fi
+        (
+            cd ~/src/product-config/
+            git pull
+        )
+    fi
+
+    if [[ "$1" =~ / ]]; then
+        die invalid oem project: $1
+    fi
+
+    if test -f ~/src/product-config/sync-qc-oems/"$1"; then
+        ~/tmp/sync-qc-oems "$1"
+        (
+            cd /data/mirror/"$1".git
+            for x in $(git branch -a | grep '^\s*qualcomm/' -P); do
+                echo git log for branch "$x":
+                git log $x
+            done
+        )
+    else
+        die "oem project $1 not exist? add it in smartisan:product-config (in subdir sync-qc-oems)"
     fi
 }
 
