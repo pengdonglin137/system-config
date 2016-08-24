@@ -207,7 +207,7 @@ psync() {
     else
         return 0
     fi
-    command psync "$@" >/dev/null 2>&1 </dev/null
+    command psync "$@" </dev/null
 }
 ssh() {
 
@@ -1040,78 +1040,6 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 fi
             fi
 
-            for config in $(
-                               for x in .repo/out-*-{eng,userdebug}; do
-                                   if test "${x##*-}" = userdebug; then
-                                       local user_later=false
-                                       if [[ $(basename $base_build) =~ mol ]]; then
-                                           if test -d "$x"; then
-                                               mkdir -p "${x%-*}"-user
-                                           fi
-                                           user_later=true
-                                       fi
-                                   fi
-                                   echo $x
-                                   if test $user_later = true; then
-                                       echo "${x%-*}"-user
-                                   fi
-                               done | uniq-even-non-ajacent
-                           ); do
-                if test ! -d "$config" -o -e "$config/no-cron-build"; then
-                    continue
-                fi
-                config=${config#.repo/out-}
-                (
-                    info will build $config at $base_build
-                    if test -d "bionic"; then
-                        if test -e .repo/out-$config/manifest.xml.base && diff -q .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base; then
-                            echo no need to rebuild $config in $base_build
-                            exit 0
-                        fi
-                        if android-make -c $config || (info "$config need do clean build"; rm -rf .repo/out-$config/*/||true; android-make -c $config); then
-                            info "$config build ok 1st time in $base_build"
-                            cp .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base
-                            info new build is ok, will update the build manifest.
-                            cp .repo/manifest.xml.sync .repo/manifest.xml.base
-                            cat .repo/manifest.xml.base > .repo/manifest.xml
-                            copy-compile-output-files
-                        else
-                            exit 1
-                        fi
-                    else
-                        info not an android repo, maybe oem?
-                        exit 0
-                    fi
-
-                ) || (
-                    if test -e .repo/out-$config/manifest.xml.base && ! diff -q .repo/manifest.xml.sync .repo/out-$config/manifest.xml.base; then
-                        (
-                            info need to try old build for $config in $base_build
-                            cat .repo/out-$config/manifest.xml.base > .repo/manifest.xml
-                            my-rfa 'git clean -xfd; git reset --hard'
-                            repo sync -j8 -d --no-tags
-                            if android-make -c $config; then
-                                copy-compile-output-files
-                            else
-                                exit 1
-                            fi
-                        ) || (
-                            info need to try clean old build
-                            repo sync -j8 -d --no-tags
-                            rm .repo/out-$config -rf
-                            if android-make -c $config; then
-                                copy-compile-output-files
-                                repo manifest -r -o .repo/out-$config/manifest.xml.base.$$
-                                mv .repo/out-$config/manifest.xml.base.$$ .repo/out-$config/manifest.xml.base
-                            else
-                                exit 1
-                            fi
-                        ) || abc-notify-maintainer -s "Full build failed again, with the base manifest\! for $PWD: $config" -a buildspec.mk
-                    else
-                        abc-notify-maintainer -s "Full build failed and no old base xml found for $PWD: $config" -a buildspec.mk
-                    fi
-                ) || true
-            done
             (
                 if ! is-tty-io; then
                     mkbeagrepidx&
@@ -1248,7 +1176,44 @@ function abc-beagrep() {
         die "Invalid repo dir: $repo_path"
     fi
     cd "$base_build"
-    beagrep "$@"
+    args=$(cat)
+    time (beagrep -s -e "$args" 2>&1) 2>~/.cache/system-config/logs/abc.time.$$ || true
+    (
+        flock 9
+        echo $(now): $ABC_USER: $SSH_ORIGINAL_COMMAND $args $(grep real ~/.cache/system-config/logs/abc.time.$$) >> ~/.cache/system-config/logs/abc.log
+        rm ~/.cache/system-config/logs/abc.time.$$
+    ) 9> ~/.cache/system-config/logs/.abc.lock
+}
+
+function abc-grep-beatags() {
+    ## start code-generator "^\\s *#\\s *"
+    # generate-getopts -l b:base_build
+    ## end code-generator
+    ## start generated code
+    local base_build=
+    local OPTIND=1
+    while getopts 'b:' opt; do
+        case "$opt" in
+            b)    base_build=$OPTARG;;
+            *)    echo Usage Error; exit 2;;
+        esac
+    done
+    shift $(($OPTIND - 1))
+    
+    ## end generated code
+    
+    base_build=$(readlink -f ~/buildfarm/"$base_build")
+    if test ! -d "$base_build" || ! is-a-subdir "$base_build" ~/buildfarm/; then
+        die "Invalid repo dir: $repo_path"
+    fi
+    cd "$base_build"
+    args=$(cat)
+    time (grep-beatags -e "$args" 2>&1) 2>~/.cache/system-config/logs/abc.time.$$ || true
+    (
+        flock 9
+        echo $(now): $ABC_USER::: $SSH_ORIGINAL_COMMAND $args $(grep real ~/.cache/system-config/logs/abc.time.$$) >> ~/.cache/system-config/logs/abc.log
+        rm ~/.cache/system-config/logs/abc.time.$$
+    ) 9> ~/.cache/system-config/logs/.abc.lock
 }
 
 
@@ -1282,14 +1247,6 @@ function create-slave() { # create a slave on another build, requires
     unset SSH_AUTH_SOCK
     command psync $slave system-config
     command psync $slave external
-    command psync $slave cpan
-    (
-        cd ~/src/github/
-        command psync $slave external-local
-        command psync $slave twittering-mode
-        command psync $slave weibo.emacs
-    )
-
     # rsync .ssh $slave: -av --exclude .ssh/known_hosts --exclude=.ssh/.git --delete
     echo slave created.
 }
