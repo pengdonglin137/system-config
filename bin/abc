@@ -938,6 +938,7 @@ function mirror-manifests() {
 
 function cron-daily-build() { # do a daily build using cron. do not submit this task!
     . ~/system-config/bin/set-ssh-agent
+    set -x
 
     (
         local x
@@ -1025,18 +1026,22 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
             fi
 
             if ! is-tty-io; then
+                (
+                    cd .repo/manifests
+                    git reset --hard
+                    git clean -xfd
+                )
                 my-rfa "git reset --hard; git clean -xfd" || true
-                repo sync -j8 -d --no-tags ||
-                    abc-notify-maintainer -s "repo sync failed for $PWD: $?" || continue
+                (set -o pipefail; repo sync -j4 -d --no-tags 2>&1 | tee .repo/sync.log ||
+                     abc-notify-maintainer -s "repo sync failed for $PWD: $?" || true
+                )
 
                 repo manifest -r -o .repo/manifest.xml.sync
-                cat .repo/manifest.xml.sync > .repo/manifest.xml
                 if test -e .repo/manifest.xml.base && diff -q .repo/manifest.xml.base .repo/manifest.xml.sync; then
                     info "The repo of $PWD don't need update"
                     exit 0
-                elif test -e .repo/manifest.xml.base; then
+                else
                     info Will need to update the build in $PWD:
-                    diff .repo/manifest.xml.base .repo/manifest.xml.sync | info
                 fi
             fi
 
@@ -1046,7 +1051,8 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                     SOURCECODETAGSMODE=true mkbeagrepidx
                     wait
                 fi
-            ) 9>/dev/null
+            ) 9>/dev/null >/dev/null 2>&1 || true
+            mv .repo/manifest.xml.sync .repo/manifest.xml.base
         ) || continue
     done
 }
@@ -1246,7 +1252,7 @@ function create-slave() { # create a slave on another build, requires
     # . ~/system-config/bin/set-ssh-agent
     unset SSH_AUTH_SOCK
     command psync $slave system-config
-    command psync $slave external
+    command rsync ~/external/local $slave:external -av --exclude .git
     # rsync .ssh $slave: -av --exclude .ssh/known_hosts --exclude=.ssh/.git --delete
     echo slave created.
 }
