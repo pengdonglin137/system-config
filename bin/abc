@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# [[file:~/system-config/doc/projects/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
+# [[file:~/src/github/android-documents/cm/ABC.org::*%E6%9C%80%E7%BB%88%E7%9A%84%E7%89%88%E6%9C%AC%EF%BC%9A][the-ultimate-script]]
 
 # The name abc stands for Android Build Cake. Android Build is a piece
 # of Cake.
@@ -881,7 +881,7 @@ function sync-qc-oems() {
     if test -f ~/src/product-config/sync-qc-oems/"$1"; then
         ~/tmp/sync-qc-oems "$1"
         (
-            cd /data/mirror/"$1".git
+            cd /mnt/ota-base/.code/qualcomm/"$1".git
             for x in $(git branch -a | grep '^\s*qualcomm/' -P); do
                 echo git log for branch "$x":
                 git log $x
