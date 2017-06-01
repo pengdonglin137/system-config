@@ -1032,7 +1032,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                     git clean -xfd
                 )
                 my-rfa "git reset --hard; git clean -xfd" || true
-                (set -o pipefail; repo sync -j4 -d --no-tags 2>&1 | tee .repo/sync.log ||
+                (set -o pipefail; repo sync -c -j4 -d --no-tags 2>&1 | tee .repo/sync.log ||
                      abc-notify-maintainer -s "repo sync failed for $PWD: $?" || true
                 )
 
