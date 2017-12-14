@@ -163,7 +163,31 @@ function update_one_xml() {
     flock 9
     echo locked $@
 
+    function on-exit() {
+        if test $? = 0; then
+            ABC_USER=${ABC_USER:-smartisancm@smartisan.com}
+            mail-cms -i -a "$ABC_USER" -o -s "你要求的 repo 索引（xml: $xml）已经创建完成" <<<"之后你可以使用 abc-x grep -b $dir 'HELLO WORLD' 进行搜索"
+        else
+            if test "$USER_INPUT_ERROR"; then
+                ABC_USER=${ABC_USER:-baohaojun@smartisan.com}
+            else
+                ABC_USER=baohaojun@smartisan.com
+                USER_INPUT_ERROR="未知错误，请查看 code3 上的 ~/tmp/nohup.out 文件"
+            fi
+            mail-cms -i -a "$ABC_USER" -o -s "未能正确为 $xml 创建 abc-x grep 的索引" <<< "$USER_INPUT_ERROR"
+        fi
+    }
+
     if test ! -d ~/buildfarm/"$dir"; then
+        . atexit on-exit
+        set -x
+        git-get -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -d ~/system-config/.git/repo-manifests -b sanfrancisco --single-branch
+
+        if test ! -e ~/system-config/.git/repo-manifests/$xml; then
+            USER_INPUT_ERROR="指定的 xml 文件 $xml 在 ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git （分支：sanfrancisco）下找不到"
+            die "Can't find $xml"
+        fi
+
         tmpdir=~/buildfarm/.tmpdir/"$dir".$$
         rm -rf $(dirname $tmpdir)
         mkdir -p $tmpdir
@@ -889,7 +913,7 @@ function add-base-build() {
     base_build=$1
     if test ! -d ~/buildfarm/"$base_build"; then
         cd ~/tmp
-        nohup setsid abc update_one_xml "${base_build//%/\/}.xml" "${base_build}" </dev/null >/dev/null 2>&1 &
+        nohup setsid abc update_one_xml "${base_build//%/\/}.xml" "${base_build}" </dev/null >>nohup.out 2>&1 &
     fi
 }
 
