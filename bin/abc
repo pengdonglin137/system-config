@@ -28,12 +28,13 @@ fi
 
 die() {
     (
-        echo $(date): "($ABC_USER $SSH_ORIGINAL_COMMAND)" Error: "$@"
+        echo $(date): "($ABC_USER $SSH_ORIGINAL_COMMAND)"
+        echo "    Error: $*"
         echo
     ) |
         (
             flock ~/.cache/system-config/logs/abc.err.lock tee -a ~/.cache/system-config/logs/abc.err.txt
-        )
+        ) 1>&2
     exit -1
 }
 
@@ -146,6 +147,45 @@ function dumpsys() { # dump the system state (e.g., who is locking the base buil
         done
         uptime
     )
+}
+
+
+function update_one_xml() {
+    if test $# != 2; then
+        die "Error: Usage $(basename $0) xml dir"
+    fi
+
+    xml=$1
+    dir=$2
+
+    exec 9> ~/buildfarm/.update-one-xml.lock;
+    echo about to lock for $@
+    flock 9
+    echo locked $@
+
+    if test ! -d ~/buildfarm/"$dir"; then
+        tmpdir=~/buildfarm/.tmpdir/"$dir".$$
+        rm -rf $(dirname $tmpdir)
+        mkdir -p $tmpdir
+        cd $tmpdir
+        cp ~/buildfarm/.repo-zygote/.repo . -avl
+        (
+            cd .repo/manifests
+            git reset --hard
+            git clean -xfd
+        )
+        repo init -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -b sanfrancisco -m $xml --repo-url smartisan:/googlesource/git-repo --reference=/data/mirror/ -g all
+        repo sync -j4 -d -c -f || true
+        cd ~/buildfarm/
+        mv $tmpdir "$dir"
+        cd "$dir"
+        . ~/system-config/.bashrc
+        if test ! -d ~/.cache/system-config/for-code-reading/$PWD; then
+            for-code-reading
+        fi
+    fi
+
+    touch ~/buildfarm/"$dir"/.repo/from-smart-builder
 }
 
 
@@ -844,6 +884,15 @@ abc-notify-maintainer() {
     return 1
 }
 
+
+function add-base-build() {
+    base_build=$1
+    if test ! -d ~/buildfarm/"$base_build"; then
+        cd ~/tmp
+        nohup setsid abc update_one_xml "${base_build//%/\/}.xml" "${base_build}" </dev/null >/dev/null 2>&1 &
+    fi
+}
+
 function detect-base-build-names() {
     cd ~/buildfarm/
     for x in */; do
@@ -1118,6 +1167,8 @@ function abc-tags() { # use beagrep to find matching files, for e.g.,
     fi
 
     if test ! -d ~/buildfarm/"$base"; then
+        info "这个版本还没有被创建源码索引，现在会尝试自动创建（完成后对给你发一封邮件）"
+        add-base-build "$base"
         die "no such base build: $base"
     fi
 
@@ -1152,6 +1203,8 @@ function abc-files() { # use beagrep to find matching files, for e.g.,
     fi
 
     if test ! -d ~/buildfarm/"$base"; then
+        info "这个版本还没有被创建源码索引，现在会尝试自动创建（完成后对给你发一封邮件）"
+        add-base-build "$base"
         die "no such base build: $base"
     fi
 
@@ -1357,5 +1410,12 @@ if test "$(readlink -f "$BASH_SOURCE")" = "$(readlink -f "$(echo "$0" | grep / |
          die "$1: is not an abc command"
     fi
 fi
+
+
+exit 0
+
+# Local Variables: #
+# eval: (read-only-mode 1) #
+# End: #
 
 # the-ultimate-script ends here
