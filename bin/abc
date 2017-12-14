@@ -166,7 +166,7 @@ function update_one_xml() {
     function on-exit() {
         if test $? = 0; then
             ABC_USER=${ABC_USER:-smartisancm@smartisan.com}
-            mail-cms -i -a "$ABC_USER" -o -s "你要求的 repo 索引（xml: $xml）已经创建完成" <<<"之后你可以使用 abc-x grep -b $dir 'HELLO WORLD' 进行搜索"
+            mail-cms -i -a "$ABC_USER" -s "你要求的 repo 索引（xml: $xml）已经创建完成" <<<"之后你可以使用 abc-x grep -b $dir 'HELLO WORLD' 进行搜索"
         else
             if test "$USER_INPUT_ERROR"; then
                 ABC_USER=${ABC_USER:-baohaojun@smartisan.com}
@@ -174,7 +174,7 @@ function update_one_xml() {
                 ABC_USER=baohaojun@smartisan.com
                 USER_INPUT_ERROR="未知错误，请查看 code3 上的 ~/tmp/nohup.out 文件"
             fi
-            mail-cms -i -a "$ABC_USER" -o -s "未能正确为 $xml 创建 abc-x grep 的索引" <<< "$USER_INPUT_ERROR"
+            mail-cms -i -a "$ABC_USER" -s "未能正确为 $xml 创建 abc-x grep 的索引" <<< "$USER_INPUT_ERROR"
         fi
     }
 
