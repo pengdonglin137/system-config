@@ -1110,7 +1110,7 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
                 )
 
                 repo manifest -r -o .repo/manifest.xml.sync
-                if test -e .repo/manifest.xml.base && diff -q .repo/manifest.xml.base .repo/manifest.xml.sync; then
+                if test -e .repo/manifest.xml.base && diff .repo/manifest.xml.base .repo/manifest.xml.sync > .repo/manifest.xml.diff; then
                     info "The repo of $PWD don't need update"
                     exit 0
                 else
@@ -1233,7 +1233,7 @@ function abc-files() { # use beagrep to find matching files, for e.g.,
     fi
 
     cd -P ~/buildfarm/"$base"
-
+    touch .repo/do-beagrep || true
     beagrep-files "$@" | cut -b $((${#PWD} + 2))-
 }
 
@@ -1260,6 +1260,7 @@ function abc-beagrep() {
     fi
     cd "$base_build"
     args=$(cat)
+    touch .repo/do-beagrep || true
     time (beagrep -s -e "$args" 2>&1) 2>~/.cache/system-config/logs/abc.time.$$ || true
     (
         flock 9
