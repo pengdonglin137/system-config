@@ -553,7 +553,7 @@ copy-compile-output-files() {
 }
 
 function build-request() { # submit a build request
-    echo "你好，安卓编译中心（Android Build Center，abc）已停止提供编译服务，目前只提供代码搜索服务（参考 workflow 文档中对 abc-x grep 命令的说明"
+    echo "你好，安卓编译中心（Android Build Center，abc）已停止提供编译服务，目前只提供代码搜索服务（参考 workflow 文档中对 abc-x grep 命令的说明）"
     exit 0
     ## start generated code
     TEMP=$(getopt -o b:m:hd:p: --long "base,method:,help,dir:,patch-dir:"  -n $(basename $0) -- "$@")
