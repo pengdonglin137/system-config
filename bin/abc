@@ -179,7 +179,10 @@ function update_one_xml() {
     }
 
     if test -d ~/buildfarm/"$dir"; then
-        touch ~/buildfarm/"$dir"
+        touch ~/buildfarm/"$dir" || true
+        if test "$SMARTCM_ABC_FOR_DEV" = true; then
+            touch ~/buildfarm/"$dir"/.repo/is-dev || true
+        fi
     else
         . atexit on-exit
         mkdir -p ~/buildfarm/.cold/
