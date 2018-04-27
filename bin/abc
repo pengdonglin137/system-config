@@ -178,35 +178,53 @@ function update_one_xml() {
         fi
     }
 
-    if test ! -d ~/buildfarm/"$dir"; then
+    if test -d ~/buildfarm/"$dir"; then
+        touch ~/buildfarm/"$dir"
+    else
         . atexit on-exit
-        set -x
-        git-get -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -d ~/system-config/.git/repo-manifests -b sanfrancisco --single-branch
-
-        if test ! -e ~/system-config/.git/repo-manifests/$xml; then
-            USER_INPUT_ERROR="指定的 xml 文件 $xml 在 ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git （分支：sanfrancisco）下找不到"
-            die "Can't find $xml"
-        fi
-
-        tmpdir=~/buildfarm/.tmpdir/"$dir".$$
-        rm -rf $(dirname $tmpdir)
-        mkdir -p $tmpdir
-        cd $tmpdir
-        cp ~/buildfarm/.repo-zygote/.repo . -avl
+        mkdir -p ~/buildfarm/.cold/
+        lock_file=~/buildfarm/.cold/"$dir".lock
         (
-            cd .repo/manifests
-            git reset --hard
-            git clean -xfd
+            exec 9> ~/buildfarm/.cold/"$dir".lock
+
+            if test -d ~/buildfarm/.cold/"$dir"; then
+                if test "$SMARTCM_ABC_FOR_DEV" = true; then
+                    exit
+                fi
+                tmpdir=~/buildfarm/.cold/"$dir"
+            else
+                set -x
+                git-get -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -d ~/system-config/.git/repo-manifests -b sanfrancisco --single-branch
+
+                if test ! -e ~/system-config/.git/repo-manifests/$xml; then
+                    USER_INPUT_ERROR="指定的 xml 文件 $xml 在 ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git （分支：sanfrancisco）下找不到"
+                    die "Can't find $xml"
+                fi
+
+                tmpdir=~/buildfarm/.tmpdir/"$dir".$$
+                rm -rf $(dirname $tmpdir)
+                mkdir -p $tmpdir
+                cd $tmpdir
+                cp ~/buildfarm/.repo-zygote/.repo . -avl
+                (
+                    cd .repo/manifests
+                    git reset --hard
+                    git clean -xfd
+                )
+            fi
+
+            cd $tmpdir
+            repo init -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -b sanfrancisco -m $xml --repo-url smartisan:/googlesource/git-repo --reference=/data/mirror/ -g all
+            repo sync -j4 -d -c -f || true
+            cd ~/buildfarm/
+            mv $tmpdir "$dir"
+            touch "$dir"
+            cd "$dir"
+            . ~/system-config/.bashrc
+            if test ! -d ~/.cache/system-config/for-code-reading/$PWD; then
+                for-code-reading
+            fi
         )
-        repo init -u ssh://gerrit.smartisan.cn/qualcomm/platform/manifest.git -b sanfrancisco -m $xml --repo-url smartisan:/googlesource/git-repo --reference=/data/mirror/ -g all
-        repo sync -j4 -d -c -f || true
-        cd ~/buildfarm/
-        mv $tmpdir "$dir"
-        cd "$dir"
-        . ~/system-config/.bashrc
-        if test ! -d ~/.cache/system-config/for-code-reading/$PWD; then
-            for-code-reading
-        fi
     fi
 
     touch ~/buildfarm/"$dir"/.repo/from-smart-builder
@@ -1015,40 +1033,6 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
     . ~/system-config/bin/set-ssh-agent
     set -x
 
-    (
-        local x
-        for x in "$@"; do
-            if test "$x" = -b; then
-                exit # don't if we are testing with a base build.
-            fi
-        done
-        (
-            cd ~/buildfarm/.repo-zygote
-            cd .repo/manifests
-            git pull
-        ) || true
-        cd /data/mirror
-        if test ! -e .owned-by-abc; then
-            exit
-        fi
-        if is-tty-io; then
-            exit
-        fi
-
-        for x in $(ssh smartisan gerrit ls-projects); do
-            if test ! -d $x.git; then
-                git init --bare $x.git
-            fi
-            (
-                cd $x.git
-                remote=abc-$(echo $x|md5sum|cut -b 1-3)
-                git remote add $remote smartisan-gerrit:$x ||
-                    git config remote.$remote.url smartisan-gerrit:$x || true
-                git fetch -n $remote refs/changes/*:refs/remotes/$remote/changes/* refs/heads/*:refs/remotes/$remote/heads/* refs/meta/*:refs/remotes/$remote/meta/*
-            ) || true
-        done | tee ~/.cache/system-config/logs/cron-git-fetch-$(today).log
-    ) || true
-
     ## start code-generator "^\\s *#\\s *"
     # generate-getopts -l b:base_builds
     ## end code-generator
@@ -1086,6 +1070,13 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
 
         if test -L "$d"; then
             continue;
+        fi
+
+        if test ! -e "$d/.repo/do-beagrep"; then
+            mkdir -p .cold
+            rm -rf .cold/"$d"
+            mv "$d" .cold
+            continue
         fi
         (
             cd "$d"/.repo/manifests
