@@ -1076,9 +1076,9 @@ function cron-daily-build() { # do a daily build using cron. do not submit this 
         fi
 
         if test ! -e "$d/.repo/do-beagrep"; then
-            mkdir -p .cold
-            rm -rf .cold/"$d"
-            mv "$d" .cold
+            mkdir -p ~/buildfarm/.cold
+            rm -rf ~/buildfarm/.cold/"$b"
+            mv "$d" ~/buildfarm/.cold
             continue
         fi
         (
