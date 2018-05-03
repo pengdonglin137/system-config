@@ -180,18 +180,16 @@ function update_one_xml() {
 
     if test -d ~/buildfarm/"$dir"; then
         touch ~/buildfarm/"$dir" || true
-        if test "$SMARTCM_ABC_FOR_DEV" = true; then
+        if test "$SMARTCM_ABC_FOR_DEV_BRANCH" = true; then
             touch ~/buildfarm/"$dir"/.repo/is-dev || true
         fi
     else
         . atexit on-exit
         mkdir -p ~/buildfarm/.cold/
-        lock_file=~/buildfarm/.cold/"$dir".lock
         (
-            exec 9> ~/buildfarm/.cold/"$dir".lock
-
             if test -d ~/buildfarm/.cold/"$dir"; then
-                if test "$SMARTCM_ABC_FOR_DEV" = true; then
+                if test "$SMARTCM_ABC_FOR_DEV_BRANCH" = true; then
+                    touch ~/buildfarm/.cold/"$dir"/.repo/is-dev
                     exit
                 fi
                 tmpdir=~/buildfarm/.cold/"$dir"
@@ -229,8 +227,6 @@ function update_one_xml() {
             fi
         )
     fi
-
-    touch ~/buildfarm/"$dir"/.repo/from-smart-builder
 }
 
 
